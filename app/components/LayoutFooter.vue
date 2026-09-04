@@ -16,22 +16,23 @@
 </template>
 
 <style scoped lang="scss">
+@use "~/assets/styles/mixins" as *;
+
 .footer {
   display: flex;
   flex-direction: column;
   gap: 50px;
+  width: 100%;
   padding: 0 16px 30px;
-  margin: 0 auto;
-  max-width: 1248px;
-  &__top {
-    a:hover {
-      fill: red;
-    }
-  }
+  margin: auto auto 0 auto;
   &__info {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    @include breakpointMax(767px) {
+      flex-direction: column;
+    }
   }
   &__social {
     display: flex;

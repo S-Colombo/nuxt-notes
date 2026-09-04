@@ -87,7 +87,7 @@
             aria-label="Удалить пункт"
             @click="removeTodo(todo.id)"
           >
-            ✕
+            <NuxtIcon name="trash" />
           </button>
         </li>
       </ul>

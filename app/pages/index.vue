@@ -60,6 +60,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+@use "~/assets/styles/mixins" as *;
+
 .notes-page {
   &__head {
     display: flex;
@@ -75,9 +77,15 @@ onMounted(() => {
     line-height: 1.5;
   }
   &__list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); 
-    gap: 18px; 
+    gap: 18px;
+    @include breakpointMax(767px) {
+      display: flex;
+      flex-direction: column;
+    }
+    @include breakpointMin(768px) {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr); 
+    }
   }
 }
 </style>

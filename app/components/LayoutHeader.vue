@@ -23,14 +23,22 @@ import IconLogo from '~/components/icon/IconLogo.vue'
 </script>
 
 <style scoped lang="scss">
+@use "~/assets/styles/mixins" as *;
+
 .header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  max-width: 1248px;
+  width: 100%;
   padding: 0 16px;
-  margin: 48px auto 0;
   border-bottom: 1px solid var(--color-gray);
+  @include breakpointMax(767px) {
+    flex-direction: column;
+    margin-top: 24px;
+  }
+  @include breakpointMin(768px) {
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 48px auto 0;
+  }
   &__brand {
     display: inline-flex;
     padding-bottom: 24px;
