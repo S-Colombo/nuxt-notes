@@ -9,12 +9,18 @@ export interface PopupStore {
 }
 
 export enum PopupType {
-  RemoveBonusePopup = 'RemoveBonusePopup',
+  CheckConfirmPopup = 'CheckConfirmPopup',
 }
-export type PopupParams = {
-  [PopupType.RemoveBonusePopup]: {
-    title: string
-    taskId?: string
-  }
 
+export type ConfirmAction = 'deleteNote' | 'cancelEdit' | 'restoreDraft' | 'noteDeletedExternally'
+
+export type PopupParams = {
+  [PopupType.CheckConfirmPopup]: {
+    title: string
+    description?: string
+    confirmLabel?: string
+    cancelLabel?: string
+    action: ConfirmAction
+    noteId?: string
+  }
 }

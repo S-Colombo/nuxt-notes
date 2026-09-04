@@ -1,0 +1,39 @@
+@use "sass:math";
+@use "sass:color";
+
+//mixin breakpoint
+$_type: width !default;
+
+@mixin breakpointMax($point, $type: $_type) {
+  @if math.is-unitless($point) {
+    $point: #{$point}px;
+  }
+
+  @media only screen and ($type < $point) {
+    @content;
+  }
+}
+
+@mixin breakpointMin($point, $type: $_type) {
+  @if math.is-unitless($point) {
+    $point: #{$point}px;
+  }
+
+  @media only screen and ($type >= $point) {
+    @content;
+  }
+}
+
+@mixin breakpointMinMax($minPoint, $maxPoint, $type: $_type) {
+  @if math.is-unitless($minPoint) {
+    $minPoint: #{$minPoint}px;
+  }
+
+  @if math.is-unitless($maxPoint) {
+    $maxPoint: #{$maxPoint}px;
+  }
+
+  @media only screen and ($minPoint < $type < $maxPoint) {
+    @content;
+  }
+}

@@ -70,7 +70,7 @@ import BaseLoading from '~/components/common/BaseLoading.vue'
 import { closePopup, getActivePopup, getIsLoading } from '~/globalStores/popupStore/popupStore'
 import type { PopupType } from '~/globalStores/popupStore/types'
 import { usePerfectScrollbar as usePerfectScrollbarComposable } from '~/composables/usePerfectScrollbar'
-import { ScreenSize } from '#shared/enums/common/ScreenSize'
+import { ScreenSize } from '~/utils/screenSize'
 
 const emit = defineEmits(['close'])
 
@@ -115,18 +115,21 @@ const props = withDefaults(
 const slots = useSlots()
 const hasFooterSlot = computed(() => Boolean(slots.footer))
 
-const isDesktop = ref<boolean>(window.innerWidth >= ScreenSize.MD)
+const isDesktop = ref(true)
 
 function handleResize() {
   isDesktop.value = window.innerWidth >= ScreenSize.MD
 }
 
 onMounted(() => {
+  handleResize()
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
+  if (import.meta.client) {
+    window.removeEventListener('resize', handleResize)
+  }
 })
 
 const isVisible = computed(() => {
