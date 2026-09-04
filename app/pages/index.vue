@@ -41,7 +41,7 @@ function goEdit(id: string) {
 }
 
 async function onDelete(id: string) {
-  const ok = await confirm({
+  const showPopup = await confirm({
     title: 'Удалить заметку?',
     description: 'Восстановить удалённую заметку будет нельзя',
     confirmLabel: 'Удалить',
@@ -49,7 +49,7 @@ async function onDelete(id: string) {
     action: 'deleteNote',
     noteId: id,
   })
-  if (ok) {
+  if (showPopup) {
     notesStore.remove(id)
   }
 }

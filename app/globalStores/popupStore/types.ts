@@ -12,7 +12,7 @@ export enum PopupType {
   CheckConfirmPopup = 'CheckConfirmPopup',
 }
 
-export type ConfirmAction = 'deleteNote' | 'cancelEdit'
+export type ConfirmAction = 'deleteNote' | 'cancelEdit' | 'restoreDraft' | 'noteDeletedExternally'
 
 export type PopupParams = {
   [PopupType.CheckConfirmPopup]: {

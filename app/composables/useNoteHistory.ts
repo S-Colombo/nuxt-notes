@@ -1,79 +1,20 @@
+import type { Ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Note, TodoItem } from '~/types/note'
 import { cloneNote } from '~/types/note'
+import {
+  NoteHistoryEngine,
+  TYPING_PAUSE_MS,
+  type HistoryPatch,
+} from '~/services/noteHistoryEngine'
 
-const HISTORY_LIMIT = 50
-const TYPING_PAUSE_MS = 600
-
-/** Diff-only history entry — never a full note snapshot */
-export type HistoryPatch =
-  | { op: 'title'; before: string; after: string }
-  | { op: 'todoText'; todoId: string; before: string; after: string }
-  | { op: 'todoDone'; todoId: string; before: boolean; after: boolean }
-  | { op: 'todoAdd'; todo: TodoItem; index: number }
-  | { op: 'todoRemove'; todo: TodoItem; index: number }
-
-function applyPatch(note: Note, patch: HistoryPatch): void {
-  switch (patch.op) {
-    case 'title':
-      note.title = patch.after
-      break
-    case 'todoText': {
-      const todo = note.todos.find(item => item.id === patch.todoId)
-      if (todo) todo.text = patch.after
-      break
-    }
-    case 'todoDone': {
-      const todo = note.todos.find(item => item.id === patch.todoId)
-      if (todo) todo.done = patch.after
-      break
-    }
-    case 'todoAdd':
-      note.todos.splice(patch.index, 0, { ...patch.todo })
-      break
-    case 'todoRemove':
-      note.todos.splice(patch.index, 1)
-      break
-  }
-}
-
-function invertPatch(patch: HistoryPatch): HistoryPatch {
-  switch (patch.op) {
-    case 'title':
-      return { op: 'title', before: patch.after, after: patch.before }
-    case 'todoText':
-      return {
-        op: 'todoText',
-        todoId: patch.todoId,
-        before: patch.after,
-        after: patch.before,
-      }
-    case 'todoDone':
-      return {
-        op: 'todoDone',
-        todoId: patch.todoId,
-        before: patch.after,
-        after: patch.before,
-      }
-    case 'todoAdd':
-      return { op: 'todoRemove', todo: { ...patch.todo }, index: patch.index }
-    case 'todoRemove':
-      return { op: 'todoAdd', todo: { ...patch.todo }, index: patch.index }
-  }
-}
-
-function isNoop(patch: HistoryPatch): boolean {
-  if (patch.op === 'title' || patch.op === 'todoText') {
-    return patch.before === patch.after
-  }
-  if (patch.op === 'todoDone') {
-    return patch.before === patch.after
-  }
-  return false
-}
+export type { HistoryPatch }
+export { HISTORY_LIMIT, TYPING_PAUSE_MS } from '~/services/noteHistoryEngine'
 
 export function useNoteHistory(draft: Ref<Note>) {
-  const undoStack = ref<HistoryPatch[]>([])
-  const redoStack = ref<HistoryPatch[]>([])
+  const engine = new NoteHistoryEngine()
+  const undoStack = ref<HistoryPatch[]>(engine.undoStack)
+  const redoStack = ref<HistoryPatch[]>(engine.redoStack)
 
   let titleBaseline: string | null = null
   const todoTextBaselines = new Map<string, string>()
@@ -83,6 +24,11 @@ export function useNoteHistory(draft: Ref<Note>) {
   const canUndo = computed(() => undoStack.value.length > 0)
   const canRedo = computed(() => redoStack.value.length > 0)
 
+  function syncStacks() {
+    undoStack.value = [...engine.undoStack]
+    redoStack.value = [...engine.redoStack]
+  }
+
   function clearTypingTimer() {
     if (typingTimer) {
       clearTimeout(typingTimer)
@@ -91,12 +37,8 @@ export function useNoteHistory(draft: Ref<Note>) {
   }
 
   function pushPatch(patch: HistoryPatch) {
-    if (isNoop(patch)) return
-    undoStack.value.push(patch)
-    if (undoStack.value.length > HISTORY_LIMIT) {
-      undoStack.value.shift()
-    }
-    redoStack.value = []
+    engine.push(patch)
+    syncStacks()
   }
 
   function flushPendingTyping() {
@@ -109,7 +51,6 @@ export function useNoteHistory(draft: Ref<Note>) {
         before: titleBaseline,
         after: draft.value.title,
       })
-      // Next burst after a pause starts from the latest value
       titleBaseline = draft.value.title
     }
 
@@ -144,8 +85,6 @@ export function useNoteHistory(draft: Ref<Note>) {
   }
 
   function onTitleChange() {
-    // Baseline must be set in beginTitleEdit (focus). If missing, skip
-    // rather than recording a corrupt before===after patch from post-input value.
     if (titleBaseline === null) return
     pendingField = { kind: 'title' }
     scheduleTypingFlush()
@@ -173,7 +112,6 @@ export function useNoteHistory(draft: Ref<Note>) {
     if (pendingField?.kind === 'todoText' && pendingField.todoId === todoId) {
       flushPendingTyping()
     } else {
-      // blur of field that already flushed on pause
       const baseline = todoTextBaselines.get(todoId)
       const todo = draft.value.todos.find(item => item.id === todoId)
       if (baseline !== undefined && todo && baseline !== todo.text) {
@@ -205,23 +143,16 @@ export function useNoteHistory(draft: Ref<Note>) {
 
   function undo() {
     flushPendingTyping()
-    const patch = undoStack.value.pop()
-    if (!patch) return
-    applyPatch(draft.value, invertPatch(patch))
-    redoStack.value.push(patch)
+    engine.undo(draft.value)
+    syncStacks()
     titleBaseline = null
     todoTextBaselines.clear()
   }
 
   function redo() {
     flushPendingTyping()
-    const patch = redoStack.value.pop()
-    if (!patch) return
-    applyPatch(draft.value, patch)
-    undoStack.value.push(patch)
-    if (undoStack.value.length > HISTORY_LIMIT) {
-      undoStack.value.shift()
-    }
+    engine.redo(draft.value)
+    syncStacks()
     titleBaseline = null
     todoTextBaselines.clear()
   }
@@ -231,8 +162,8 @@ export function useNoteHistory(draft: Ref<Note>) {
     pendingField = null
     titleBaseline = null
     todoTextBaselines.clear()
-    undoStack.value = []
-    redoStack.value = []
+    engine.reset()
+    syncStacks()
   }
 
   function replaceDraft(note: Note) {

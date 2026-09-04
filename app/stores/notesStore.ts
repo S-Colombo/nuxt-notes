@@ -1,13 +1,19 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { cloneNote, type Note } from '~/types/note'
-import { loadNotesFromStorage, saveNotesToStorage } from '~/services/notesStorage'
+import {
+  loadNotesFromStorage,
+  NOTES_STORAGE_KEY,
+  saveNotesToStorage,
+} from '~/services/notesStorage'
 
 export const useNotesStore = defineStore('notes', () => {
   const notes = ref<Note[]>([])
   const hydrated = ref(false)
 
-  function hydrate() {
-    if (hydrated.value || !import.meta.client) return
+  function hydrate(force = false) {
+    if (!import.meta.client) return
+    if (hydrated.value && !force) return
     notes.value = loadNotesFromStorage()
     hydrated.value = true
   }
@@ -38,8 +44,14 @@ export const useNotesStore = defineStore('notes', () => {
     persist()
   }
 
+  /** Sync from another tab's localStorage write without breaking the editor. */
+  function syncFromStorageEvent(event: StorageEvent) {
+    if (event.key !== NOTES_STORAGE_KEY) return
+    hydrate(true)
+  }
+
   const sortedNotes = computed(() =>
-    [...notes.value].sort((a, b) => b.updatedAt - a.updatedAt)
+    [...notes.value].sort((a, b) => b.updatedAt - a.updatedAt),
   )
 
   if (import.meta.client) {
@@ -54,5 +66,6 @@ export const useNotesStore = defineStore('notes', () => {
     getById,
     upsert,
     remove,
+    syncFromStorageEvent,
   }
 })

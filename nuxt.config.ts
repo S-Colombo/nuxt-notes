@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/scripts',
     '@nuxt/icon',
+    '@nuxt/test-utils/module',
     'nuxt-icons',
   ],
 

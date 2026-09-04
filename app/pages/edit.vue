@@ -1,5 +1,22 @@
 <template>
-  <div class="edit-page">
+  <div
+    v-if="notFound"
+    class="edit-page edit-page--not-found"
+  >
+    <h1>Заметка не найдена</h1>
+    <p class="edit-page__empty">
+      Заметки с таким адресом нет — возможно, она была удалена.
+    </p>
+    <DefaultButton
+      label="К списку заметок"
+      @click="router.push('/')"
+    />
+  </div>
+
+  <div
+    v-else
+    class="edit-page"
+  >
     <div class="edit-page__head">
       <h1>{{ isNew ? 'Новая заметка' : 'Редактирование' }}</h1>
       <div class="edit-page__toolbar">
@@ -41,7 +58,7 @@
         type="text"
         placeholder="Название заметки"
         @focus="history.beginTitleEdit()"
-        @input="history.onTitleChange()"
+        @input="onTitleInput"
         @blur="history.endTitleEdit()"
       >
     </label>
@@ -55,7 +72,12 @@
           @click="addTodo"
         />
       </div>
-      <p v-if="!draft.todos.length" class="edit-page__empty">Нет пунктов — добавьте первый.</p>
+      <p
+        v-if="!draft.todos.length"
+        class="edit-page__empty"
+      >
+        Нет пунктов — добавьте первый.
+      </p>
       <ul
         v-else
         class="edit-page__todo-list"
@@ -78,7 +100,7 @@
             type="text"
             placeholder="Текст пункта"
             @focus="history.beginTodoTextEdit(todo.id)"
-            @input="history.onTodoTextChange(todo.id)"
+            @input="onTodoTextInput(todo.id)"
             @blur="history.endTodoTextEdit(todo.id)"
           >
           <button
@@ -102,6 +124,15 @@ import { useNoteHistory } from '~/composables/useNoteHistory'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { cloneNote, createEmptyNote, createTodo } from '~/types/note'
 import type { Note } from '~/types/note'
+import {
+  clearDraftStorage,
+  isDraftDirty,
+  isDraftRelevant,
+  loadDraftFromStorage,
+  saveDraftToStorage,
+} from '~/services/notesStorage'
+
+const DRAFT_PERSIST_DELAY_MS = 800
 
 const notesStore = useNotesStore()
 const route = useRoute()
@@ -109,11 +140,16 @@ const router = useRouter()
 const { confirm } = useConfirmDialog()
 
 const draft = ref<Note>(createEmptyNote())
-const savedSnapshot = ref<string>('')
+const savedSnapshot = ref('')
+const notFound = ref(false)
+const ready = ref(false)
 const history = useNoteHistory(draft)
 
 const canUndo = history.canUndo
 const canRedo = history.canRedo
+
+let draftPersistTimer: ReturnType<typeof setTimeout> | null = null
+let handlingExternalDelete = false
 
 const noteId = computed(() => {
   const raw = route.query.id
@@ -128,34 +164,105 @@ function captureSnapshot() {
   savedSnapshot.value = JSON.stringify(draft.value)
 }
 
-function loadDraft() {
-  notesStore.hydrate()
-  const id = noteId.value
-  if (id) {
-    const existing = notesStore.getById(id)
-    if (existing) {
-      history.replaceDraft(existing)
-      captureSnapshot()
-      return
-    }
+function clearDraftPersistTimer() {
+  if (draftPersistTimer) {
+    clearTimeout(draftPersistTimer)
+    draftPersistTimer = null
   }
-  history.replaceDraft(createEmptyNote())
-  captureSnapshot()
 }
 
-onMounted(() => {
-  loadDraft()
-})
+function persistDraftNow() {
+  if (!ready.value || notFound.value) return
+  if (!isDirty.value) {
+    clearDraftStorage()
+    return
+  }
+  saveDraftToStorage({
+    routeNoteId: noteId.value,
+    draft: cloneNote(draft.value),
+    baseSnapshot: savedSnapshot.value,
+  })
+}
 
-watch(noteId, () => {
-  loadDraft()
-})
+function scheduleDraftPersist() {
+  clearDraftPersistTimer()
+  draftPersistTimer = setTimeout(() => {
+    persistDraftNow()
+  }, DRAFT_PERSIST_DELAY_MS)
+}
+
+function discardSessionDraft() {
+  clearDraftPersistTimer()
+  clearDraftStorage()
+}
+
+async function maybeRestoreDraft(): Promise<boolean> {
+  const stored = loadDraftFromStorage()
+  if (!stored || !isDraftRelevant(stored, noteId.value) || !isDraftDirty(stored)) {
+    return false
+  }
+
+  const showPopup = await confirm({
+    title: 'Восстановить черновик?',
+    description: 'Найдены несохранённые изменения после перезагрузки страницы',
+    confirmLabel: 'Восстановить',
+    cancelLabel: 'Отклонить',
+    action: 'restoreDraft',
+    noteId: stored.draft.id,
+  })
+
+  if (showPopup) {
+    history.replaceDraft(stored.draft)
+    savedSnapshot.value = stored.baseSnapshot
+    return true
+  }
+
+  clearDraftStorage()
+  return false
+}
+
+async function loadDraft() {
+  ready.value = false
+  notFound.value = false
+  notesStore.hydrate()
+
+  const id = noteId.value
+
+  if (id) {
+    const existing = notesStore.getById(id)
+    if (!existing) {
+      notFound.value = true
+      discardSessionDraft()
+      ready.value = true
+      return
+    }
+    history.replaceDraft(existing)
+    captureSnapshot()
+  } else {
+    history.replaceDraft(createEmptyNote())
+    captureSnapshot()
+  }
+
+  await maybeRestoreDraft()
+  ready.value = true
+}
+
+function onTitleInput() {
+  history.onTitleChange()
+  scheduleDraftPersist()
+}
+
+function onTodoTextInput(todoId: string) {
+  history.onTodoTextChange(todoId)
+  scheduleDraftPersist()
+}
 
 function addTodo() {
   const todo = createTodo()
   const index = draft.value.todos.length
   draft.value.todos.push(todo)
   history.recordTodoAdd(todo, index)
+  scheduleDraftPersist()
 }
 
 function removeTodo(todoId: string) {
@@ -164,6 +271,7 @@ function removeTodo(todoId: string) {
   const [removed] = draft.value.todos.splice(index, 1)
   if (removed) {
     history.recordTodoRemove(removed, index)
+    scheduleDraftPersist()
   }
 }
 
@@ -175,6 +283,7 @@ function onToggleDone(todoId: string, event: Event) {
   const after = target.checked
   todo.done = after
   history.recordTodoDone(todoId, before, after)
+  scheduleDraftPersist()
 }
 
 function onSave() {
@@ -186,12 +295,13 @@ function onSave() {
   notesStore.upsert(toSave)
   history.reset()
   captureSnapshot()
+  discardSessionDraft()
   router.replace({ path: '/edit', query: { id: toSave.id } })
 }
 
 async function onCancelEdit() {
   history.flushPendingTyping()
-  const ok = await confirm({
+  const showPopup = await confirm({
     title: 'Отменить редактирование?',
     description: isDirty.value
       ? 'Несохранённые изменения будут потеряны'
@@ -201,13 +311,14 @@ async function onCancelEdit() {
     action: 'cancelEdit',
     noteId: draft.value.id,
   })
-  if (!ok) return
+  if (!showPopup) return
   history.reset()
+  discardSessionDraft()
   router.push('/')
 }
 
 async function onDelete() {
-  const ok = await confirm({
+  const showPopup = await confirm({
     title: 'Удалить заметку?',
     description: 'Восстановить удалённую заметку будет нельзя',
     confirmLabel: 'Удалить',
@@ -215,10 +326,46 @@ async function onDelete() {
     action: 'deleteNote',
     noteId: draft.value.id,
   })
-  if (!ok) return
+  if (!showPopup) return
   notesStore.remove(draft.value.id)
   history.reset()
+  discardSessionDraft()
   router.push('/')
+}
+
+async function handleExternalDelete() {
+  if (handlingExternalDelete || notFound.value) return
+  const id = noteId.value
+  if (!id) return
+  if (notesStore.getById(id)) return
+
+  handlingExternalDelete = true
+  discardSessionDraft()
+  notFound.value = true
+  history.reset()
+
+  await confirm({
+    title: 'Заметка удалена',
+    description: 'Эта заметка была удалена в другой вкладке',
+    confirmLabel: 'К списку',
+    cancelLabel: 'Закрыть',
+    action: 'noteDeletedExternally',
+    noteId: id,
+  })
+
+  handlingExternalDelete = false
+  router.push('/')
+}
+
+function onStorage(event: StorageEvent) {
+  notesStore.syncFromStorageEvent(event)
+  void handleExternalDelete()
+}
+
+function onPageHide() {
+  if (ready.value && !notFound.value && isDirty.value) {
+    persistDraftNow()
+  }
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -242,12 +389,23 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadDraft()
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('storage', onStorage)
+  window.addEventListener('pagehide', onPageHide)
+})
+
+watch(noteId, () => {
+  void loadDraft()
 })
 
 onBeforeUnmount(() => {
+  clearDraftPersistTimer()
+  onPageHide()
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('storage', onStorage)
+  window.removeEventListener('pagehide', onPageHide)
 })
 </script>
 
@@ -256,6 +414,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 28px;
+
+  &--not-found {
+    align-items: flex-start;
+  }
 
   &__head {
     display: flex;
