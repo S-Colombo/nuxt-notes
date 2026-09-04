@@ -25,15 +25,20 @@ defineProps<{
   height: var(--size);
 }
 
-:deep(.nuxt-icon.base-loading svg .dot)  {
-  color: var(--bg-level);
-  fill-opacity: 1;
+:deep(.nuxt-icon.base-loading svg .dot) {
+  fill: var(--secondary-default);
+  fill-opacity: 0.2;
   animation: dot-color 1.2s linear infinite;
 }
 
 @keyframes dot-color {
-  0% { color: var(--secondary-default);}
-  20% { color: var(--bg-level);}
+  0%,
+  100% {
+    fill-opacity: 1;
+  }
+  20% {
+    fill-opacity: 0.2;
+  }
 }
 
 :deep(.nuxt-icon.base-loading svg .dot-1)  { animation-delay: 0s; }

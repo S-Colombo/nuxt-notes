@@ -7,7 +7,10 @@
         @click="goCreate"
       />
     </div>
-    <p v-if="!notesStore.sortedNotes.length" class="notes-page__empty">
+    <div v-if="isLoading" class="notes-page__loader">
+      <BaseLoading class="loader-icon" :size="50" />
+    </div>
+    <p v-else-if="!notesStore.sortedNotes.length" class="notes-page__empty">
       Пока нет заметок. Создайте первую.
     </p>
     <div v-else class="notes-page__list">
@@ -25,12 +28,14 @@
 <script setup lang="ts">
 import NoteCard from '~/components/NoteCard.vue'
 import DefaultButton from '~/components/common/DefaultButton.vue'
+import BaseLoading from '~/components/common/BaseLoading.vue'
 import { useNotesStore } from '~/stores/notesStore'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 
 const notesStore = useNotesStore()
 const router = useRouter()
 const { confirm } = useConfirmDialog()
+const isLoading = ref<boolean>(true);
 
 function goCreate() {
   router.push('/edit')
@@ -56,6 +61,7 @@ async function onDelete(id: string) {
 
 onMounted(() => {
   notesStore.hydrate()
+  isLoading.value = false
 })
 </script>
 
@@ -86,6 +92,13 @@ onMounted(() => {
       display: grid;
       grid-template-columns: repeat(3, 1fr); 
     }
+  }
+  &__loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 256px;
   }
 }
 </style>
