@@ -48,6 +48,44 @@ const formLoading = inject <Ref<boolean>>('formLoading', ref(false))
 const isLoading = computed(() => formLoading.value || props.loading)
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--color-black);
+  border-radius: 8px;
+  background: var(--color-black);
+  color: var(--color-white-light);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 
+  &:hover:not(:disabled) {
+    background: var(--color-black-hover);
+    border-color: var(--color-black-hover);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &.soft {
+    background: transparent;
+    color: var(--color-black);
+
+    &:hover:not(:disabled) {
+      background: var(--color-gray);
+      border-color: var(--color-black);
+      color: var(--color-black);
+    }
+  }
+}
 </style>

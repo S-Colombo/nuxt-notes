@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue'
-import { ScreenSize } from '#shared/enums/common/ScreenSize'
+import { ScreenSize } from '~/utils/screenSize'
 
 const wrapper = ref<HTMLElement | null>(null)
 const inner = ref<HTMLElement | null>(null)

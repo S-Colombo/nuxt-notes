@@ -8,8 +8,13 @@
         }"
       />
     </main>
+    <PopupContainer />
   </NuxtLayout>
 </template>
+
+<script setup lang="ts">
+import PopupContainer from '~/components/popups/PopupContainer.vue'
+</script>
 
 <style scoped>
 .page-enter-active,

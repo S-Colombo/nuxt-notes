@@ -1,78 +1,59 @@
 <template>
   <div class="header">
-    <NuxtLink to="/">
+    <NuxtLink
+      to="/"
+      class="header__brand"
+      aria-label="На главную"
+    >
       <IconLogo class="header__logo" />
     </NuxtLink>
-    <div class="header__content">
-      <div class="header__menu">
-        <NuxtLink to="/edit">Редактировать заметку</NuxtLink>
-      </div>
-      <div class="header__hr"/>   
-    </div>
+    <nav class="header__menu">
+      <NuxtLink to="/">
+        Заметки
+      </NuxtLink>
+      <NuxtLink to="/edit">
+         Создание / редактирование
+      </NuxtLink>
+    </nav>
   </div>
 </template>
 
+<script setup lang="ts">
+import IconLogo from '~/components/icon/IconLogo.vue'
+</script>
+
 <style scoped lang="scss">
 .header {
-  padding: 0 16px;
-  margin: 0 auto;
-  max-width: 1248px;
   display: flex;
   justify-content: space-between;
-  margin-top: 48px;
+  align-items: flex-start;
+  max-width: 1248px;
+  padding: 0 16px;
+  margin: 48px auto 0;
   border-bottom: 1px solid var(--color-gray);
-
-  &__logo {
-    
+  &__brand {
+    display: inline-flex;
+    padding-bottom: 24px;
   }
-
-  &__content {
-    display: flex;
-    gap: 60px;
-    align-items: center;
-  }
-
   &__menu {
     display: flex;
-    gap: 60px;
+    gap: 40px;
     align-items: center;
+    a {
+      padding-bottom: 24px;
+      border-bottom: 1px solid transparent;
+      font-size: 16px;
+      line-height: 27px;
+      color: var(--color-black);
+      text-decoration: none;
+      transition: all 0.2s linear;
+      &:hover {
+        color: var(--color-dark-gray);
+      }
+      &.router-link-active {
+        border-bottom-color: var(--color-black);
+      }
+    }
   }
-}
-
-.header__menu a {
-  font-size: 16px;
-  line-height: 27px;
-  color: var(--color-black);
-  text-decoration: none;
-  padding-bottom: 48px;
-}
-
-.header__menu a:hover {
-  color: var(--color-dark-gray);
-}
-
-.header__menu a.router-link-active {
-  border-bottom: 1px solid var(--color-black);
-}
-
-.header__icons {
-  display: flex;
-  gap: 40px;
-  align-items: center;
-}
-
-.header__icons a {
-  padding-bottom: 48px;
-}
-
-.header__icons a.router-link-active {
-  border-bottom: 1px solid var(--color-black);
-}
-
-.header__hr {
-  border-left: 1px solid var(--color-dark-gray);
-  height: 17px;
-  align-self: flex-start;
-  margin-top: 4px;
 }
 </style>

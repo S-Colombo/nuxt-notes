@@ -1,8 +1,4 @@
 <template>
-  <Transition name="fade">
-    <BaseOverlay v-if="isAnyOpen" />
-  </Transition>
-
   <Transition name="slide">
     <component
       :is="activePopupComponent"
@@ -13,38 +9,23 @@
 </template>
 
 <script setup lang="ts">
-import BaseOverlay from '~/components/common/popups/BaseOverlay.vue'
 import { getActivePopup } from '~/globalStores/popupStore/popupStore'
 import { PopupType } from '~/globalStores/popupStore/types'
 
 const componentResolver: Partial<Record<PopupType, Component>> = {
-  [PopupType.RemoveBonusePopup]: defineAsyncComponent(
-    () => import('~/components/popups/RemoveBonusePopup.vue')
+  [PopupType.CheckConfirmPopup]: defineAsyncComponent(
+    () => import('~/components/popups/CheckConfirmPopup.vue')
   ),
 }
-
-const isAnyOpen = computed(() => Boolean(getActivePopup.value?.popupId))
 
 const activePopupComponent = computed((): Component | null => {
   const active = getActivePopup.value?.popupId
   if (!active) return null
-  const component = componentResolver[active]
-  return component ?? null
+  return componentResolver[active] ?? null
 })
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  opacity: 1;
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
 .slide-enter-active,
 .slide-leave-active {
   @media (max-width: 743px) {
