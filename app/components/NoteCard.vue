@@ -7,6 +7,7 @@
           v-for="todo in previewTodos"
           :key="todo.id"
           class="note-card__todo"
+          :class="{done: todo.done}"
         >
           {{ todo.text || 'Пустой пункт' }}
         </li>
@@ -68,6 +69,9 @@ const hiddenCount = computed(() => Math.max(0, props.note.todos.length - limit.v
     background-color: var(--color-accent);
     .note-card__todo {
       color: var(--color-black);
+      &.done::before {
+        border-color: var(--color-white-light);
+      }
     }
   }
   &__title {
@@ -86,15 +90,44 @@ const hiddenCount = computed(() => Math.max(0, props.note.todos.length - limit.v
     font-size: 15px;
     line-height: 1.4;
     color: var(--color-dark-gray);
-    padding-left: 14px;
+    padding-left: calc(16px + 12px);
     position: relative;
     &::before {
-      content: '•';
+      content: '';
       position: absolute;
       left: 0;
+      top: 2px;
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid currentColor;
+      border-radius: 4px;
+      background-color: transparent;
+      box-sizing: border-box;
+    }
+    &.done::before {
+      background-color: var(--color-accent);
+      border-color: var(--color-black);
+    }
+    &.done::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 5px;
+      width: 5px;
+      height: 8px;
+      border-right: 2px solid var(--color-black);
+      border-bottom: 2px solid var(--color-black);
+      transform: rotate(45deg);
+    }
+    &.done {
+      text-decoration: line-through;
     }
     &--more {
       font-style: italic;
+      &::before,
+      &::after {
+        display: none;
+      }
     }
   }
   &__empty {

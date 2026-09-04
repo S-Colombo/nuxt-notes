@@ -61,6 +61,7 @@ async function onDelete(id: string) {
 
 onMounted(() => {
   notesStore.hydrate()
+  console.log('notesStore', notesStore)
   isLoading.value = false
 })
 </script>
